@@ -26,8 +26,8 @@ import qualified Control.Monad.Trans.Writer as Writer
 -- Low-level terminal output
 
 -- | Keep track of all of the output capabilities we can use.
--- 
--- We'll be frequently using the (automatic) 'Monoid' instance for 
+--
+-- We'll be frequently using the (automatic) 'Monoid' instance for
 -- @Actions -> TermOutput@.
 data Actions = Actions {leftA, rightA, upA :: Int -> TermOutput,
                         clearToLineEnd :: TermOutput,
@@ -64,7 +64,7 @@ getActions = do
 getWrapLine :: TermOutput -> Capability TermOutput
 getWrapLine left1 = (do
     wraparoundGlitch >>= guard
-    return (termText " " <#> left1)
+    return (termText " " <%> left1)
     ) `mplus` return mempty
 
 ----------------------------------------------------------------
@@ -118,8 +118,8 @@ evalDraw term actions = EvalTerm eval liftE
                             . evalStateT' initTermRows
                             . runReaderT' term
                             . runReaderT' actions
-                            . unDraw 
- 
+                            . unDraw
+
 
 runTerminfoDraw :: Handles -> MaybeT IO RunTerm
 runTerminfoDraw h = do
@@ -167,7 +167,7 @@ terminfoKeys term = mapMaybe getSequence keyCapabilities
                 ,(keyEnter,      simpleKey $ KeyChar '\n')
                 ]
 
-    
+
 
 ----------------------------------------------------------------
 -- Terminal output actions
@@ -223,8 +223,8 @@ spaces n = const $ termText $ replicate n ' '
 changePos :: TermPos -> TermPos -> TermAction
 changePos TermPos {termRow=r1, termCol=c1} TermPos {termRow=r2, termCol=c2}
     | r1 == r2 = if c1 < c2 then right (c2-c1) else left (c1-c2)
-    | r1 > r2 = cr <#> up (r1-r2) <#> right c2
-    | otherwise = cr <#> mreplicate (r2-r1) nl <#> right c2
+    | r1 > r2 = cr <%> up (r1-r2) <%> right c2
+    | otherwise = cr <%> mreplicate (r2-r1) nl <%> right c2
 
 moveToPos :: TermPos -> ActionM ()
 moveToPos p = do
@@ -322,7 +322,7 @@ clearDeadText oldRS = do
             modify $ setRow r c
             when (extraRows /= 0)
                 $ put TermPos {termRow = r + extraRows, termCol=0}
-            output $ clearToLineEnd <#> mreplicate extraRows (nl <#> clearToLineEnd)
+            output $ clearToLineEnd <%> mreplicate extraRows (nl <%> clearToLineEnd)
 
 clearLayoutT :: ActionM ()
 clearLayoutT = do
@@ -341,8 +341,8 @@ repositionT :: Layout -> LineChars -> ActionM ()
 repositionT _ s = do
     oldPos <- get
     l <- getLinesLeft
-    output $ cr <#> mreplicate l nl
-            <#> mreplicate (l + termRow oldPos) (clearToLineEnd <#> up 1)
+    output $ cr <%> mreplicate l nl
+            <%> mreplicate (l + termRow oldPos) (clearToLineEnd <%> up 1)
     put initTermPos
     put initTermRows
     drawLineDiffT ([],[]) s
@@ -350,7 +350,7 @@ repositionT _ s = do
 instance (MonadException m, MonadReader Layout m) => Term (Draw m) where
     drawLineDiff xs ys = runActionT $ drawLineDiffT xs ys
     reposition layout lc = runActionT $ repositionT layout lc
-    
+
     printLines = mapM_ $ \line -> runActionT $ do
                                     outputText line
                                     output nl
